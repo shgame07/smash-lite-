@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>SMASH!!! -lite-</title>
+<style>
+  :root{
+    --color-bg:#ffffff;
+    --color-accent:#e6393f;
+    --color-gray:#eeeeee;
+    --color-gray-dark:#cfcfcf;
+    --color-text:#1a1a1a;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--color-bg); color:var(--color-text);
+    font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+    overscroll-behavior:none; touch-action:none;
+  }
+  #app{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+    padding-top:var(--safe-top); padding-bottom:var(--safe-bottom);
+    overflow:hidden;
+  }
+  .scene{ display:none; flex-direction:column; width:100%; height:100%; }
+  .scene.active{ display:flex; }
+
+  /* ---------- 共通パーツ ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; min-height:48px;
+  }
+  .back-btn{
+    font-size:22px; background:none; border:none; color:var(--color-text);
+    padding:4px 10px; cursor:pointer;
+  }
+  h1.title{ font-size:20px; margin:0; text-align:center; flex:1; }
+  .content{ flex:1; overflow-y:auto; padding:0 20px 20px; -webkit-overflow-scrolling:touch; }
+  .btn{
+    display:block; width:100%; padding:16px; margin:10px 0;
+    background:#ffffff; border:2px solid var(--color-accent); border-radius:18px;
+    color:#000; font-size:16px; font-weight:bold; text-align:center;
+    transition:transform .08s ease, background .08s ease, color .08s ease;
+  }
+  .btn:active{ transform:scale(0.96); background:var(--color-accent); color:#fff; }
+  .btn.disabled{ opacity:.4; pointer-events:none; }
+  .btn.secondary{ border-color:var(--color-gray-dark); color:#555; }
+  .field{ margin:14px 0; }
+  .field label{ display:block; font-size:13px; color:#666; margin-bottom:6px; }
+  .field input{
+    width:100%; padding:14px; border:2px solid var(--color-gray-dark); border-radius:14px;
+    font-size:16px; background:#fff; color:#000;
+  }
+  .error-msg{ color:var(--color-accent); font-size:13px; min-height:18px; margin:6px 0; }
+  .toast{
+    position:fixed; left:50%; bottom:60px; transform:translateX(-50%);
+    background:rgba(0,0,0,.8); color:#fff; padding:10px 22px; border-radius:20px;
+    font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:999;
+  }
+  .toast.show{ opacity:1; }
+
+  /* ---------- ホーム ---------- */
+  #scene-home .welcome{ text-align:center; margin-top:4px; }
+  #scene-home .welcome .name{ font-size:20px; font-weight:bold; margin-top:2px; }
+  .build-card{
+    background:var(--color-gray); border-radius:16px; padding:16px; margin:16px 0;
+  }
+  .build-card .cap{ font-size:12px; color:#777; margin-bottom:4px; }
+  .build-card .char{ font-size:28px; }
+  .stat-row{ display:flex; justify-content:space-between; font-size:13px; padding:2px 0; }
+  .stat-row .stat-name{ color:#666; }
+
+  /* ---------- Stage選択 ---------- */
+  .stage-item{
+    display:flex; align-items:center; gap:12px; padding:16px; margin:8px 0;
+    background:var(--color-gray); border-radius:14px; font-size:16px;
+  }
+  .stage-item.locked{ opacity:.45; }
+  .stage-item .icon{ width:22px; text-align:center; }
+
+  /* ---------- キャラ設定 / ビルド編集 ---------- */
+  .slot-list .build-card{ display:flex; align-items:center; justify-content:space-between; }
+  .stat-edit-row{ display:flex; align-items:center; gap:10px; margin:10px 0; }
+  .stat-edit-row .label{ width:96px; font-size:13px; }
+  .stat-edit-row .bar-wrap{ flex:1; height:10px; background:var(--color-gray); border-radius:6px; overflow:hidden; }
+  .stat-edit-row .bar-fill{ height:100%; background:var(--color-accent); transition:width .15s; }
+  .stat-edit-row .value{ width:30px; text-align:right; font-weight:bold; }
+  .stepper{
+    width:34px; height:34px; border-radius:50%; border:2px solid var(--color-gray-dark);
+    background:#fff; font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center;
+  }
+  .stepper:active{ background:var(--color-accent); color:#fff; }
+  .remain-box{
+    text-align:center; padding:10px; margin:14px 0; border-radius:12px; background:var(--color-gray); font-size:14px;
+  }
+  .remain-box b{ font-size:18px; }
+  .stat-desc{ font-size:12px; color:#888; margin:-4px 0 8px 106px; }
+
+  /* ---------- 戦闘画面 ---------- */
+  #scene-battle{ background:#fff; position:relative; }
+  .hud{ display:flex; justify-content:space-between; padding:10px 14px; z-index:5; }
+  .hud .side{ width:44%; }
+  .hud .side.enemy{ text-align:right; }
+  .hud .name{ font-size:13px; margin-bottom:3px; }
+  .hpbar-wrap{ height:10px; background:var(--color-gray); border-radius:6px; overflow:hidden; }
+  .hpbar{ height:100%; background:var(--color-accent); width:100%; transition:width .15s linear; }
+  .hpbar.low{ animation:blink 0.5s infinite; }
+  @keyframes blink{ 50%{ opacity:.35; } }
+  .gaugebar-wrap{ height:6px; background:var(--color-gray); border-radius:4px; overflow:hidden; margin-top:4px; }
+  .gaugebar{ height:100%; background:linear-gradient(90deg,#ff9d42,#e6393f); width:0%; transition:width .1s linear; }
+  .gaugebar.full{ box-shadow:0 0 6px 2px rgba(230,57,63,.7); }
+
+  .pause-btn{ position:absolute; top:8px; right:8px; font-size:22px; background:none; border:none; z-index:6; padding:8px; }
+
+  .field-view{
+    position:relative; flex:1; overflow:hidden; background:#fff;
+    border-top:1px solid var(--color-gray); border-bottom:1px solid var(--color-gray);
+  }
+  .ground{ position:absolute; left:0; right:0; background:var(--color-gray-dark); }
+  .platform{ position:absolute; background:#e2e2e2; box-shadow:0 2px 3px rgba(0,0,0,.12); }
+  .fighter{
+    position:absolute; font-size:38px; line-height:1; transform:translate(-50%,-100%);
+    text-align:center; transition:filter .1s;
+  }
+  .fighter.iframe{ animation:flicker .1s infinite; }
+  @keyframes flicker{ 50%{ opacity:.3; } }
+  .fx{ position:absolute; font-size:26px; transform:translate(-50%,-50%); pointer-events:none; animation:fxpop .25s ease-out forwards; }
+  @keyframes fxpop{ from{ transform:translate(-50%,-50%) scale(0.6); opacity:1;} to{ transform:translate(-50%,-50%) scale(1.3); opacity:0;} }
+  .dmg-popup{ position:absolute; font-weight:bold; font-size:16px; color:#000; pointer-events:none; animation:dmgfloat .5s ease-out forwards; }
+  .dmg-popup.special{ color:var(--color-accent); font-size:20px; }
+  @keyframes dmgfloat{ from{ transform:translate(-50%,0); opacity:1; } to{ transform:translate(-50%,-30px); opacity:0; } }
+
+  .stage-banner{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:30px; font-weight:bold; background:rgba(255,255,255,.001); pointer-events:none; z-index:7;
+  }
+  .stage-banner span{ background:rgba(255,255,255,.9); padding:6px 24px; border-radius:12px; border:2px solid var(--color-accent); }
+
+  .input-indicator{
+    display:flex; justify-content:center; gap:10px; padding:10px;
+  }
+  .input-indicator .icon{
+    width:34px; height:34px; border-radius:50%; background:#ffe9ea; color:#b96a6c;
+    display:flex; align-items:center; justify-content:center; font-size:16px; transition:background .1s, color .1s;
+  }
+  .input-indicator .icon.on{ background:#7a4a2d; color:#fff; }
+
+  .touch-zones{ position:absolute; inset:0; display:flex; z-index:4; }
+  .touch-zones .zone{ flex:1; }
+
+  .overlay{
+    position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .overlay .panel{ background:#fff; border-radius:18px; padding:26px 22px; width:80%; max-width:320px; text-align:center; }
+  .overlay .panel h2{ margin:0 0 18px; font-size:24px; }
+
+  #scene-coming-soon .content, #scene-stage-clear .content, #scene-game-over .content{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center;
+  }
+  #scene-stage-clear h2{ font-size:26px; }
+  #scene-game-over h2{ font-size:26px; color:var(--color-accent); }
+
+  #scene-loading{ align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ローディング -->
+  <div class="scene active" id="scene-loading">
+    <div>Loading...</div>
+  </div>
+
+  <!-- アカウント作成 -->
+  <div class="scene" id="scene-account-create">
+    <div class="topbar"><div></div><h1 class="title">アカウント作成</h1><div></div></div>
+    <div class="content">
+      <div class="field">
+        <label>プレイヤー名（2〜12文字）</label>
+        <input id="ac-name" maxlength="12" placeholder="たろう">
+      </div>
+      <div class="field">
+        <label>ログインID（半角英数字・_ - / 6〜20文字）</label>
+        <input id="ac-id" maxlength="20" placeholder="taro_0001">
+      </div>
+      <div class="field">
+        <label>パスワード（英数字 / 6〜20文字）</label>
+        <input id="ac-pw" type="password" maxlength="20" placeholder="password">
+      </div>
+      <div class="error-msg" id="ac-error"></div>
+      <button class="btn" id="ac-submit">アカウントを作成</button>
+      <button class="btn secondary" id="ac-goto-login">すでにアカウントをお持ちの方はこちら</button>
+    </div>
+  </div>
+
+  <!-- ログイン（別端末） -->
+  <div class="scene" id="scene-login">
+    <div class="topbar"><button class="back-btn" data-back="scene-account-create">←</button><h1 class="title">ログイン</h1><div></div></div>
+    <div class="content">
+      <div class="field">
+        <label>ログインID</label>
+        <input id="lg-id" maxlength="20">
+      </div>
+      <div class="field">
+        <label>パスワード</label>
+        <input id="lg-pw" type="password" maxlength="20">
+      </div>
+      <div class="error-msg" id="lg-error"></div>
+      <button class="btn" id="lg-submit">ログイン</button>
+    </div>
+  </div>
+
+  <!-- ホーム -->
+  <div class="scene" id="scene-home">
+    <div class="topbar">
+      <div></div>
+      <h1 class="title">SMASH!!! -lite-<br><small style="font-size:11px;color:#999;">Version 1.0.0</small></h1>
+      <button class="back-btn" id="home-settings-btn">⚙️</button>
+    </div>
+    <div class="content">
+      <div class="welcome">
+        <div>ようこそ</div>
+        <div class="name" id="home-playername">-</div>
+      </div>
+      <div class="build-card" id="home-build-card">
+        <div class="cap">現在のビルド（<span id="home-build-slot">1</span>）</div>
+        <div class="char" id="home-build-char">🤸 Human</div>
+        <div id="home-build-stats"></div>
+      </div>
+      <button class="btn" id="home-gamestart-btn">▶ GAME START</button>
+      <button class="btn" id="home-charselect-btn">👤 キャラ設定</button>
+      <button class="btn secondary" id="home-ranking-btn">🏆 ランキング（Coming Soon）</button>
+    </div>
+  </div>
+
+  <!-- モード選択 -->
+  <div class="scene" id="scene-mode-select">
+    <div class="topbar"><button class="back-btn" data-back="scene-home">←</button><h1 class="title">GAME START</h1><div></div></div>
+    <div class="content">
+      <button class="btn" id="mode-stage-btn">▶ Stage</button>
+      <button class="btn secondary" id="mode-tower-btn">🗼 Tower（Coming Soon）</button>
+    </div>
+  </div>
+
+  <!-- Stage選択 -->
+  <div class="scene" id="scene-stage-select">
+    <div class="topbar"><button class="back-btn" data-back="scene-mode-select">←</button><h1 class="title">Stage Select</h1><div></div></div>
+    <div class="content" id="stage-list"></div>
+  </div>
+
+  <!-- Stage確認 -->
+  <div class="scene" id="scene-stage-confirm">
+    <div class="topbar"><button class="back-btn" data-back="scene-stage-select">←</button><h1 class="title" id="stage-confirm-title">Stage 1</h1><div></div></div>
+    <div class="content">
+      <div class="build-card">
+        <div class="cap">使用ビルド</div>
+        <div class="char" id="confirm-build-char">🤸 Human</div>
+        <div id="confirm-build-stats"></div>
+      </div>
+      <button class="btn" id="stage-start-btn">START</button>
+    </div>
+  </div>
+
+  <!-- キャラ設定（ビルド一覧） -->
+  <div class="scene" id="scene-character-select">
+    <div class="topbar"><button class="back-btn" data-back="scene-home">←</button><h1 class="title">キャラクター設定</h1><div></div></div>
+    <div class="content slot-list" id="slot-list"></div>
+  </div>
+
+  <!-- ビルド編集 -->
+  <div class="scene" id="scene-build-edit">
+    <div class="topbar"><button class="back-btn" data-back="scene-character-select">←</button><h1 class="title">ビルド編集</h1><div></div></div>
+    <div class="content">
+      <div class="build-card"><div class="char">🤸 Human</div></div>
+      <div id="stat-editor"></div>
+      <div class="remain-box">残りポイント <b id="remain-points">0</b></div>
+      <div class="error-msg" id="edit-error"></div>
+      <button class="btn" id="edit-save-btn">保存</button>
+    </div>
+  </div>
+
+  <!-- 設定 -->
+  <div class="scene" id="scene-settings">
+    <div class="topbar"><button class="back-btn" data-back="scene-home">←</button><h1 class="title">設定</h1><div></div></div>
+    <div class="content">
+      <button class="btn secondary" id="settings-logout-btn">ログアウト</button>
+      <button class="btn secondary" id="settings-reset-btn">データ初期化</button>
+    </div>
+  </div>
+
+  <!-- Coming Soon -->
+  <div class="scene" id="scene-coming-soon">
+    <div class="topbar"><div></div><div></div><div></div></div>
+    <div class="content">
+      <h2>Coming Soon</h2>
+      <p id="coming-soon-msg">この機能は<br>今後のアップデートで<br>追加予定です。</p>
+      <button class="btn" data-back="scene-home">ホームへ戻る</button>
+    </div>
+  </div>
+
+  <!-- 戦闘画面 -->
+  <div class="scene" id="scene-battle">
+    <div class="hud">
+      <div class="side player">
+        <div class="name" id="hud-player-name">プレイヤー</div>
+        <div class="hpbar-wrap"><div class="hpbar" id="hud-player-hp"></div></div>
+        <div class="gaugebar-wrap"><div class="gaugebar" id="hud-player-gauge"></div></div>
+      </div>
+      <div class="side enemy">
+        <div class="name">Enemy</div>
+        <div class="hpbar-wrap"><div class="hpbar" id="hud-enemy-hp"></div></div>
+        <div class="gaugebar-wrap"><div class="gaugebar" id="hud-enemy-gauge"></div></div>
+      </div>
+    </div>
+    <button class="pause-btn" id="pause-btn">⏸</button>
+    <div class="field-view" id="field-view">
+      <div class="stage-banner" id="stage-banner" style="display:none;"><span id="stage-banner-text">Stage 1</span></div>
+      <div class="touch-zones">
+        <div class="zone" id="zone-left"></div>
+        <div class="zone" id="zone-right"></div>
+      </div>
+    </div>
+    <div class="input-indicator">
+      <div class="icon" id="ind-left">◀</div>
+      <div class="icon" id="ind-down">▼</div>
+      <div class="icon" id="ind-up">▲</div>
+      <div class="icon" id="ind-right">▶</div>
+      <div class="icon" id="ind-atk">🔅</div>
+      <div class="icon" id="ind-spc">🔆</div>
+    </div>
+
+    <div class="overlay" id="overlay-pause" style="display:none;">
+      <div class="panel">
+        <h2>PAUSE</h2>
+        <button class="btn" id="pause-resume-btn">ゲームへ戻る</button>
+        <button class="btn secondary" id="pause-restart-btn">リスタート</button>
+        <button class="btn secondary" id="pause-home-btn">ホームへ戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage Clear -->
+  <div class="scene" id="scene-stage-clear">
+    <div class="content">
+      <h2>Stage Clear!</h2>
+      <button class="btn" id="clear-next-btn">次のStage</button>
+      <button class="btn secondary" id="clear-retry-btn">もう一度</button>
+      <button class="btn secondary" id="clear-home-btn">ホームへ戻る</button>
+    </div>
+  </div>
+
+  <!-- Game Over -->
+  <div class="scene" id="scene-game-over">
+    <div class="content">
+      <h2>GAME OVER</h2>
+      <button class="btn" id="over-retry-btn">もう一度</button>
+      <button class="btn secondary" id="over-home-btn">ホームへ戻る</button>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   SMASH!!! -lite-  Version 1.0.0
+   単一HTMLファイル（CSS/JS内包） + characters.json / stages.json + GAS
+   ========================================================= */
+
+const CONFIG = {
+  // ★デプロイ後、GASウェブアプリのURLをここへ設定してください
+  API_URL: 'https://script.google.com/macros/s/AKfycbyXX-PtivdD3GCjem5UWTbe2o2IJfG_2i6nuvR45YI3DNyseEZ86aZg1y-EMytV3_28/exec'
+};
+
+const STAT_KEYS = ['hp','atk','spd','atkSpd','special'];
+const STAT_LABELS = { hp:'HP（防御）', atk:'攻撃力', spd:'素早さ', atkSpd:'攻撃速度', special:'必殺' };
+const STAT_DESC = {
+  hp:'受けるダメージ倍率に影響します',
+  atk:'通常攻撃のダメージに影響します',
+  spd:'移動・ジャンプ性能に影響します',
+  atkSpd:'通常攻撃の速度に影響します',
+  special:'必殺ゲージの増加速度に影響します'
+};
+const TOTAL_POINTS = 300;
+const STAT_MIN = 0, STAT_MAX = 90;
+
+/* ---------------- ユーティリティ ---------------- */
+function $(id){ return document.getElementById(id); }
+function uuid(){
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function showScene(id){
+  document.querySelectorAll('.scene').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function showToast(msg, ms){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), ms||2000);
+}
+document.querySelectorAll('[data-back]').forEach(btn=>{
+  btn.addEventListener('click', ()=> showScene(btn.dataset.back));
+});
+
+/* ---------------- ゲームデータ（JSON） ---------------- */
+const GameData = {
+  characters: {},
+  stages: [],
+  async load(){
+    const [chars, stages] = await Promise.all([
+      fetch('./characters.json').then(r=>r.json()),
+      fetch('./stages.json').then(r=>r.json())
+    ]);
+    chars.forEach(c=> this.characters[c.id] = c);
+    this.stages = stages;
+  },
+  getStage(id){ return this.stages.find(s=>s.stageId===id); }
+};
+
+/* ---------------- API（GAS）ラッパー ---------------- */
+const API = {
+  async call(action, payload){
+    const body = Object.assign({ action }, payload || {});
+    const res = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // CORSプリフライト回避
+      body: JSON.stringify(body)
+    });
+    return res.json();
+  }
+};
+
+/* ---------------- アプリ状態 ---------------- */
+const State = {
+  deviceToken: null,
+  accountId: null,
+  playerName: '',
+  builds: [], // [{slot,character,hp,atk,spd,atkSpd,special}]
+  currentBuildSlot: 1,
+  progress: [], // クリア済みstageIdの配列
+  settings: { bgmVolume:80, seVolume:80, vibration:true },
+  editingSlot: null,
+  editDraft: null,
+  selectedStageId: null
+};
+
+function getBuild(slot){ return State.builds.find(b=>b.slot===slot); }
+function getCurrentBuild(){ return getBuild(State.currentBuildSlot) || State.builds[0]; }
+function isStageUnlocked(stageId){
+  if (stageId === 1) return true;
+  return State.progress.includes(stageId - 1);
+}
+function isStageCleared(stageId){ return State.progress.includes(stageId); }
+
+/* ---------------- 起動シーケンス ---------------- */
+async function boot(){
+  await GameData.load();
+  State.deviceToken = localStorage.getItem('smash_device_token');
+  if (State.deviceToken){
+    try{
+      const res = await API.call('autoLogin', { deviceToken: State.deviceToken });
+      if (res.ok){
+        applyLoginResult(res);
+        showScene('scene-home');
+        renderHome();
+        return;
+      }
+    }catch(e){ /* 通信エラー時はアカウント作成へフォールバック */ }
+  }
+  showScene('scene-account-create');
+}
+window.addEventListener('load', boot);
+
+function applyLoginResult(res){
+  State.accountId = res.accountId;
+  State.playerName = res.playerName;
+  State.builds = res.builds;
+  State.progress = res.progress || [];
+  State.settings = res.settings || State.settings;
+  State.currentBuildSlot = 1;
+}
+
+/* ---------------- アカウント作成 ---------------- */
+$('ac-submit').addEventListener('click', async ()=>{
+  const name = $('ac-name').value.trim();
+  const id = $('ac-id').value.trim();
+  const pw = $('ac-pw').value;
+  const err = $('ac-error');
+  err.textContent = '';
+  if (!name){ err.textContent = 'プレイヤー名を入力してください'; return; }
+  if (name.length < 2 || name.length > 12){ err.textContent = 'プレイヤー名は2〜12文字です'; return; }
+  if (!id){ err.textContent = 'ログインIDを入力してください'; return; }
+  if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)){ err.textContent = 'ログインIDは半角英数字・_・-で6〜20文字です'; return; }
+  if (!pw){ err.textContent = 'パスワードを入力してください'; return; }
+  if (!/^[A-Za-z0-9]{6,20}$/.test(pw)){ err.textContent = 'パスワードは英数字で6〜20文字です'; return; }
+
+  const deviceToken = uuid();
+  try{
+    const res = await API.call('register', { loginId:id, password:pw, playerName:name, deviceToken });
+    if (!res.ok){ err.textContent = res.error || '作成に失敗しました'; return; }
+    localStorage.setItem('smash_device_token', deviceToken);
+    applyLoginResult(res);
+    showScene('scene-home'); renderHome();
+  }catch(e){ err.textContent = '通信に失敗しました。API_URLの設定をご確認ください'; }
+});
+$('ac-goto-login').addEventListener('click', ()=> showScene('scene-login'));
+
+$('lg-submit').addEventListener('click', async ()=>{
+  const id = $('lg-id').value.trim();
+  const pw = $('lg-pw').value;
+  const err = $('lg-error'); err.textContent = '';
+  if (!id){ err.textContent = 'ログインIDを入力してください'; return; }
+  if (!pw){ err.textContent = 'パスワードを入力してください'; return; }
+  const deviceToken = uuid();
+  try{
+    const res = await API.call('login', { loginId:id, password:pw, deviceToken });
+    if (!res.ok){ err.textContent = res.error || 'ログインに失敗しました'; return; }
+    localStorage.setItem('smash_device_token', deviceToken);
+    applyLoginResult(res);
+    showScene('scene-home'); renderHome();
+  }catch(e){ err.textContent = '通信に失敗しました'; }
+});
+
+/* ---------------- ホーム ---------------- */
+function renderHome(){
+  $('home-playername').textContent = State.playerName;
+  const b = getCurrentBuild();
+  $('home-build-slot').textContent = State.currentBuildSlot;
+  renderStatList($('home-build-stats'), b);
+}
+function renderStatList(container, build){
+  container.innerHTML = '';
+  STAT_KEYS.forEach(k=>{
+    const row = document.createElement('div'); row.className = 'stat-row';
+    row.innerHTML = `<span class="stat-name">${STAT_LABELS[k]}</span><span>${build[k]}</span>`;
+    container.appendChild(row);
+  });
+}
+$('home-gamestart-btn').addEventListener('click', ()=> showScene('scene-mode-select'));
+$('home-charselect-btn').addEventListener('click', ()=>{ renderCharacterSelect(); showScene('scene-character-select'); });
+$('home-ranking-btn').addEventListener('click', ()=>{ $('coming-soon-msg').innerHTML = 'Ranking<br>Coming Soon<br>Version1.2で実装予定'; showScene('scene-coming-soon'); });
+$('home-settings-btn').addEventListener('click', ()=> showScene('scene-settings'));
+
+/* ---------------- モード選択 ---------------- */
+$('mode-stage-btn').addEventListener('click', ()=>{ renderStageSelect(); showScene('scene-stage-select'); });
+$('mode-tower-btn').addEventListener('click', ()=>{ $('coming-soon-msg').innerHTML = 'Tower<br>Coming Soon<br>Version1.1で追加予定です。'; showScene('scene-coming-soon'); });
+
+/* ---------------- Stage選択 ---------------- */
+function renderStageSelect(){
+  const list = $('stage-list'); list.innerHTML = '';
+  GameData.stages.forEach(st=>{
+    const unlocked = isStageUnlocked(st.stageId);
+    const cleared = isStageCleared(st.stageId);
+    const div = document.createElement('div');
+    div.className = 'stage-item' + (unlocked? '' : ' locked');
+    const icon = cleared ? '✔' : (unlocked ? '　' : '🔒');
+    div.innerHTML = `<span class="icon">${icon}</span><span>Stage ${st.stageId}</span>`;
+    if (unlocked){
+      div.addEventListener('click', ()=>{
+        State.selectedStageId = st.stageId;
+        $('stage-confirm-title').textContent = 'Stage ' + st.stageId;
+        renderStatList($('confirm-build-stats'), getCurrentBuild());
+        showScene('scene-stage-confirm');
+      });
+    }
+    list.appendChild(div);
+  });
+}
+$('stage-start-btn').addEventListener('click', ()=>{
+  Battle.start(State.selectedStageId);
+});
+
+/* ---------------- キャラ設定（ビルド一覧） ---------------- */
+function renderCharacterSelect(){
+  const list = $('slot-list'); list.innerHTML = '';
+  [1,2,3].forEach(slot=>{
+    const b = getBuild(slot);
+    const card = document.createElement('div'); card.className = 'build-card';
+    const statsHtml = STAT_KEYS.map(k=>`<div class="stat-row"><span class="stat-name">${STAT_LABELS[k]}</span><span>${b[k]}</span></div>`).join('');
+    card.innerHTML = `
+      <div>
+        <div class="cap">ビルド${slot} ${slot===State.currentBuildSlot?'（使用中）':''}</div>
+        <div class="char">🤸 Human</div>
+        ${statsHtml}
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn" style="margin:0;" data-edit="${slot}">編集</button>
+          <button class="btn secondary" style="margin:0;" data-use="${slot}">このビルドを使用</button>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+  list.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openBuildEdit(Number(btn.dataset.edit)));
+  });
+  list.querySelectorAll('[data-use]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      State.currentBuildSlot = Number(btn.dataset.use);
+      renderCharacterSelect();
+      showToast('ビルド' + State.currentBuildSlot + 'を使用中にしました');
+    });
+  });
+}
+
+/* ---------------- ビルド編集 ---------------- */
+function openBuildEdit(slot){
+  State.editingSlot = slot;
+  State.editDraft = Object.assign({}, getBuild(slot));
+  renderBuildEditor();
+  showScene('scene-build-edit');
+}
+function remainingPoints(){
+  return TOTAL_POINTS - STAT_KEYS.reduce((sum,k)=> sum + State.editDraft[k], 0);
+}
+function renderBuildEditor(){
+  const container = $('stat-editor'); container.innerHTML = '';
+  STAT_KEYS.forEach(k=>{
+    const row = document.createElement('div');
+    row.innerHTML = `
+      <div class="stat-edit-row">
+        <div class="label">${STAT_LABELS[k]}</div>
+        <button class="stepper" data-dec="${k}">−</button>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${(State.editDraft[k]/STAT_MAX*100)}%"></div></div>
+        <div class="value">${State.editDraft[k]}</div>
+        <button class="stepper" data-inc="${k}">＋</button>
+      </div>
+      <div class="stat-desc">${STAT_DESC[k]}</div>`;
+    container.appendChild(row);
+  });
+  container.querySelectorAll('[data-inc]').forEach(b=> b.addEventListener('click', ()=> stepStat(b.dataset.inc, 1)));
+  container.querySelectorAll('[data-dec]').forEach(b=> b.addEventListener('click', ()=> stepStat(b.dataset.dec, -1)));
+  updateRemainDisplay();
+}
+function stepStat(key, delta){
+  const v = State.editDraft[key] + delta;
+  if (v < STAT_MIN || v > STAT_MAX) return;
+  State.editDraft[key] = v;
+  renderBuildEditor();
+}
+function updateRemainDisplay(){
+  const remain = remainingPoints();
+  $('remain-points').textContent = remain;
+  const err = $('edit-error');
+  if (remain !== 0){
+    $('edit-save-btn').classList.add('disabled');
+    err.textContent = remain > 0 ? `合計ポイントが300ではありません（残り${remain}）` : `合計ポイントが300を超えています`;
+  } else {
+    $('edit-save-btn').classList.remove('disabled');
+    err.textContent = '';
+  }
+}
+$('edit-save-btn').addEventListener('click', async ()=>{
+  if (remainingPoints() !== 0) return;
+  try{
+    const res = await API.call('saveBuild', { accountId: State.accountId, build: Object.assign({ slot: State.editingSlot }, State.editDraft) });
+    if (res.ok){
+      State.builds = res.builds;
+      showToast('保存しました', 2000);
+      showScene('scene-character-select');
+      renderCharacterSelect();
+    }
+  }catch(e){ $('edit-error').textContent = '通信に失敗しました'; }
+});
+
+/* ---------------- 設定 ---------------- */
+$('settings-logout-btn').addEventListener('click', async ()=>{
+  await API.call('logout', { accountId: State.accountId });
+  localStorage.removeItem('smash_device_token');
+  location.reload();
+});
+$('settings-reset-btn').addEventListener('click', async ()=>{
+  if (!confirm('すべてのデータを削除しますか？')) return;
+  await API.call('resetAll', { accountId: State.accountId });
+  localStorage.removeItem('smash_device_token');
+  location.reload();
+});
+
+/* =========================================================
+   バトルシステム
+   ========================================================= */
+const SQUARE = 48;              // 1マス=48px
+const FIELD_COLS = 12;
+const FIELD_ROWS = 6;
+const GROUND_ROW = 5;           // 地面（通常床）
+const PLATFORM_ROW = 3;         // すり抜け床の高さ
+const PLATFORM_SEGMENTS = [ [1,3], [5,7], [9,11] ]; // 3つのすり抜け足場
+const FIGHTER_RADIUS = 0.625;   // 直径1.25マス
+const GRAVITY = 34;             // マス/秒^2
+const JUMP_VY = -10;            // マス/秒
+const GROUND_SPEED_AT60 = 3;    // マス/秒（素早さ60基準）
+const AIR_SPEED_RATIO = 0.8;
+const NORMAL_ATK_BASE_DMG = 6;  // 攻撃力60基準
+const NORMAL_ATK_REACH = 1;
+const NORMAL_ATK_ANGLE = 90;
+const KNOCKBACK_DIST = 0.4;
+const IFRAME_SEC = 0.5;
+const SPECIAL_STUN_SEC = 0.6;
+const GAUGE_RATE_AT60 = 5;      // %/秒（必殺60基準・20秒で100%）
+const GAUGE_ON_HIT_DEAL = 8;
+const GAUGE_ON_HIT_TAKEN = 5;
+const HITSTOP_NORMAL = 0.05;
+const HITSTOP_SPECIAL = 0.08;
+const AI_TICK_SEC = 0.5;
+const STAGE_BANNER_SEC = 1.0;
+
+const Battle = {
+  active:false, paused:false,
+  player:null, enemy:null,
+  stageId:1,
+  lastTime:0, hitStopUntil:0, aiTimerAcc:0,
+  rafId:null, aiIntervalId:null,
+
+  start(stageId){
+    this.stageId = stageId;
+    const stage = GameData.getStage(stageId);
+    const playerBuild = getCurrentBuild();
+    const charDef = GameData.characters['human'];
+
+    this.player = this.makeFighter(playerBuild, charDef, 1.5, true);
+    this.enemy = this.makeFighter(stage.stats, GameData.characters[stage.enemyCharacter], FIELD_COLS-1.5, false);
+
+    this.active = true; this.paused = false; this.hitStopUntil = 0; this.aiTimerAcc = 0;
+    $('hud-player-name').textContent = State.playerName || 'プレイヤー';
+    $('overlay-pause').style.display = 'none';
+    this.buildField();
+    this.updateHud();
+    showScene('scene-battle');
+    this.showStageBanner(stageId);
+
+    this.lastTime = performance.now();
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = requestAnimationFrame(t=>this.loop(t));
+    if (this.aiIntervalId) clearInterval(this.aiIntervalId);
+    this.aiIntervalId = setInterval(()=> this.aiDecide(), AI_TICK_SEC*1000);
+  },
+
+  makeFighter(stats, charDef, xSq, isPlayer){
+    return {
+      isPlayer, charDef,
+      stats: { hp:stats.hp, atk:stats.atk, spd:stats.spd, atkSpd:stats.atkSpd, special:stats.special },
+      hp:100, gauge:0,
+      x:xSq, y:GROUND_ROW, vy:0, vx:0,
+      grounded:true, facing:isPlayer?1:-1,
+      lastAttackTime:-999, iframeUntil:0, specialStunUntil:0,
+      moveDir:0, el:null
+    };
+  },
+
+  buildField(){
+    const view = $('field-view');
+    view.querySelectorAll('.ground,.platform,.fighter,.fx,.dmg-popup').forEach(e=>e.remove());
+    const ground = document.createElement('div'); ground.className='ground';
+    ground.style.top = (GROUND_ROW*SQUARE) + 'px'; ground.style.height = (FIELD_ROWS-GROUND_ROW)*SQUARE + 'px';
+    view.appendChild(ground);
+    PLATFORM_SEGMENTS.forEach(seg=>{
+      const p = document.createElement('div'); p.className='platform';
+      p.style.left = seg[0]*SQUARE+'px'; p.style.width=(seg[1]-seg[0])*SQUARE+'px';
+      p.style.top = (PLATFORM_ROW*SQUARE)+'px'; p.style.height='10px';
+      view.appendChild(p);
+    });
+    const pEl = document.createElement('div'); pEl.className='fighter'; pEl.textContent = this.player.charDef.emoji;
+    const eEl = document.createElement('div'); eEl.className='fighter'; eEl.textContent = this.enemy.charDef.emoji;
+    view.appendChild(pEl); view.appendChild(eEl);
+    this.player.el = pEl; this.enemy.el = eEl;
+    this.renderFighterPos(this.player); this.renderFighterPos(this.enemy);
+  },
+
+  showStageBanner(stageId){
+    $('stage-banner-text').textContent = 'Stage ' + stageId;
+    const b = $('stage-banner'); b.style.display='flex'; b.style.opacity=1;
+    setTimeout(()=>{ b.style.transition='opacity .3s'; b.style.opacity=0; }, STAGE_BANNER_SEC*1000);
+    setTimeout(()=>{ b.style.display='none'; b.style.transition=''; }, STAGE_BANNER_SEC*1000+300);
+  },
+
+  renderFighterPos(f){
+    f.el.style.left = (f.x*SQUARE)+'px';
+    f.el.style.top = (f.y*SQUARE)+'px';
+    f.el.style.transform = `translate(-50%,-100%) scaleX(${f.facing})`;
+    f.el.classList.toggle('iframe', performance.now() < f.iframeUntil);
+  },
+
+  updateHud(){
+    $('hud-player-hp').style.width = Math.max(0,this.player.hp) + '%';
+    $('hud-enemy-hp').style.width = Math.max(0,this.enemy.hp) + '%';
+    $('hud-player-hp').classList.toggle('low', this.player.hp<=30);
+    $('hud-enemy-hp').classList.toggle('low', this.enemy.hp<=30);
+    $('hud-player-gauge').style.width = this.player.gauge + '%';
+    $('hud-enemy-gauge').style.width = this.enemy.gauge + '%';
+    $('hud-player-gauge').classList.toggle('full', this.player.gauge>=100);
+    $('hud-enemy-gauge').classList.toggle('full', this.enemy.gauge>=100);
+  },
+
+  loop(now){
+    if (!this.active) return;
+    const dt = Math.min(0.05, (now - this.lastTime)/1000);
+    this.lastTime = now;
+    if (!this.paused && now >= this.hitStopUntil){
+      this.update(dt, now);
+    }
+    this.rafId = requestAnimationFrame(t=>this.loop(t));
+  },
+
+  update(dt, now){
+    this.updatePhysics(this.player, dt, now);
+    this.updatePhysics(this.enemy, dt, now);
+    this.updateGauge(this.player, dt);
+    this.updateGauge(this.enemy, dt);
+    this.renderFighterPos(this.player);
+    this.renderFighterPos(this.enemy);
+    this.updateHud();
+    this.runEnemyAction(now);
+
+    if (this.enemy.hp <= 0){ this.onWin(); return; }
+    if (this.player.hp <= 0){ this.onLose(); return; }
+  },
+
+  speedOf(f){
+    const s = GROUND_SPEED_AT60 * (f.stats.spd/60);
+    return f.grounded ? s : s*AIR_SPEED_RATIO;
+  },
+
+  updatePhysics(f, dt, now){
+    const stunned = now < f.specialStunUntil;
+    // 移動
+    const dir = stunned ? 0 : f.moveDir;
+    if (dir !== 0) f.facing = dir;
+    f.x += dir * this.speedOf(f) * dt;
+    f.x = Math.max(FIGHTER_RADIUS, Math.min(FIELD_COLS - FIGHTER_RADIUS, f.x));
+
+    // 重力
+    f.vy += GRAVITY * dt;
+    const prevY = f.y;
+    f.y += f.vy * dt;
+
+    // 地面判定
+    if (f.y >= GROUND_ROW){ f.y = GROUND_ROW; f.vy = 0; f.grounded = true; f.onPlatform=false; }
+    else{
+      f.grounded = false;
+      // すり抜け足場判定（落下中・下フリック中でない場合のみ着地）
+      if (!f._fallThrough && f.vy > 0 && prevY <= PLATFORM_ROW && f.y >= PLATFORM_ROW){
+        const onSeg = PLATFORM_SEGMENTS.some(seg=> f.x >= seg[0] && f.x <= seg[1]);
+        if (onSeg){ f.y = PLATFORM_ROW; f.vy = 0; f.grounded = true; f.onPlatform = true; }
+      }
+    }
+    if (f.grounded) f._fallThrough = false;
+  },
+
+  updateGauge(f, dt){
+    const rate = GAUGE_RATE_AT60 * (f.stats.special/60);
+    f.gauge = Math.min(100, f.gauge + rate*dt);
+  },
+
+  distance(a,b){ return Math.abs(a.x-b.x); },
+
+  tryNormalAttack(attacker, defender, now){
+    if (now < attacker.specialStunUntil) return false;
+    const interval = 60 / Math.max(1, attacker.stats.atkSpd);
+    if ((now - attacker.lastAttackTime)/1000 < interval) return false;
+    attacker.lastAttackTime = now;
+    this.spawnFx(attacker, attacker.charDef.normalAttack.effect);
+    const dx = defender.x - attacker.x;
+    const facingOk = (attacker.facing>0 && dx>=0) || (attacker.facing<0 && dx<=0);
+    const dist = this.distance(attacker, defender);
+    if (facingOk && dist <= NORMAL_ATK_REACH + FIGHTER_RADIUS){
+      const baseDmg = NORMAL_ATK_BASE_DMG * (attacker.stats.atk/60);
+      this.applyHit(attacker, defender, baseDmg, false, now);
+      return true;
+    }
+    return false;
+  },
+
+  trySpecial(attacker, defender, direction, now){
+    if (attacker.gauge < 100) return false;
+    if (now < attacker.specialStunUntil) return false;
+    attacker.facing = direction;
+    attacker.gauge = 0;
+    attacker.specialStunUntil = now + SPECIAL_STUN_SEC*1000;
+    this.spawnFx(attacker, attacker.charDef.special.effect);
+    const dx = defender.x - attacker.x;
+    const facingOk = (direction>0 && dx>=0) || (direction<0 && dx<=0);
+    const dist = this.distance(attacker, defender);
+    if (facingOk && dist <= attacker.charDef.special.reach + FIGHTER_RADIUS){
+      this.applyHit(attacker, defender, attacker.charDef.special.damage, true, now);
+    }
+    return true;
+  },
+
+  applyHit(attacker, defender, baseDmg, isSpecial, now){
+    if (now < defender.iframeUntil) return;
+    const mult = 1 - (defender.stats.hp - 60)/150;
+    const dmg = Math.round(baseDmg * mult);
+    defender.hp = Math.max(0, defender.hp - dmg);
+    defender.iframeUntil = now + IFRAME_SEC*1000;
+    // ノックバック
+    const dir = defender.x >= attacker.x ? 1 : -1;
+    defender.x = Math.max(FIGHTER_RADIUS, Math.min(FIELD_COLS-FIGHTER_RADIUS, defender.x + dir*KNOCKBACK_DIST));
+    // ゲージ
+    attacker.gauge = Math.min(100, attacker.gauge + GAUGE_ON_HIT_DEAL);
+    defender.gauge = Math.min(100, defender.gauge + GAUGE_ON_HIT_TAKEN);
+    // ヒットストップ・演出
+    this.hitStopUntil = now + (isSpecial?HITSTOP_SPECIAL:HITSTOP_NORMAL)*1000;
+    this.spawnDamagePopup(defender, dmg, isSpecial);
+    if (State.settings.vibration && navigator.vibrate){
+      navigator.vibrate(isSpecial?60:30);
+    }
+  },
+
+  spawnFx(f, emoji){
+    const el = document.createElement('div'); el.className='fx'; el.textContent = emoji;
+    el.style.left = (f.x*SQUARE)+'px'; el.style.top = ((f.y-0.6)*SQUARE)+'px';
+    $('field-view').appendChild(el);
+    setTimeout(()=>el.remove(), 260);
+  },
+  spawnDamagePopup(f, dmg, isSpecial){
+    const el = document.createElement('div'); el.className='dmg-popup' + (isSpecial?' special':'');
+    el.textContent = dmg; el.style.left=(f.x*SQUARE)+'px'; el.style.top=((f.y-1.6)*SQUARE)+'px';
+    $('field-view').appendChild(el);
+    setTimeout(()=>el.remove(), 520);
+  },
+
+  jump(f, now){
+    if (!f.grounded) return;
+    if (now < f.specialStunUntil) return;
+    f.vy = JUMP_VY; f.grounded = false;
+  },
+  fallThrough(f){
+    if (f.grounded && f.onPlatform){
+      f._fallThrough = true; f.y += 0.05;
+    }
+  },
+
+  onWin(){
+    this.stopLoops();
+    if (State.settings.vibration && navigator.vibrate) navigator.vibrate(60);
+    API.call('saveProgress', { accountId: State.accountId, stageId: this.stageId }).then(res=>{
+      if (res.ok) State.progress = res.progress;
+    });
+    const nextId = this.stageId + 1;
+    $('clear-next-btn').classList.toggle('disabled', !GameData.getStage(nextId));
+    showScene('scene-stage-clear');
+  },
+  onLose(){
+    this.stopLoops();
+    if (State.settings.vibration && navigator.vibrate) navigator.vibrate([30,50,30]);
+    showScene('scene-game-over');
+  },
+  stopLoops(){
+    this.active = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    if (this.aiIntervalId) clearInterval(this.aiIntervalId);
+  },
+
+  /* ---------- 敵AI（0.5秒ごとの思考） ---------- */
+  aiDecide(){
+    if (!this.active || this.paused) return;
+    const now = performance.now();
+    const e = this.enemy, p = this.player;
+    if (e.hp<=0 || p.hp<=0){ e.moveDir = 0; return; }
+
+    const dist = this.distance(e,p);
+
+    // ① 必殺技を使うか
+    if (e.gauge >= 100 && dist <= e.charDef.special.reach + FIGHTER_RADIUS + 0.5){
+      if (Math.random() < 0.4){
+        const dir = p.x >= e.x ? 1 : -1;
+        this.trySpecial(e, p, dir, now);
+        e.moveDir = 0;
+        return;
+      }
+    }
+    // ② 通常攻撃できるか
+    if (dist <= NORMAL_ATK_REACH + FIGHTER_RADIUS + 0.3){
+      e.facing = p.x >= e.x ? 1 : -1;
+      if (Math.random() < 0.8){
+        this.tryNormalAttack(e, p, now);
+      }
+      e.moveDir = 0;
+      return;
+    }
+    // ③ 高さを合わせる
+    if (p.y < e.y - 0.5 && e.grounded){
+      this.jump(e, now); 
+    } else if (p.y > e.y + 0.5 && e.onPlatform){
+      this.fallThrough(e);
+    }
+    // ④ 近付く（少しランダム性を加える）
+    const jitter = (Math.random()-0.5) * 0.4;
+    e.moveDir = (p.x + jitter) >= e.x ? 1 : -1;
+  },
+
+  runEnemyAction(now){ /* 物理更新は update() 内で毎フレーム処理済み */ }
+};
+
+/* ---------------- プレイヤー入力（タッチ） ---------------- */
+const Input = {
+  leftStartX:0, leftStartY:0, leftActive:false,
+  rightStartX:0, rightStartY:0, rightStartTime:0, rightActive:false,
+
+  init(){
+    const left = $('zone-left'), right = $('zone-right');
+    left.addEventListener('touchstart', e=>this.leftStart(e), {passive:true});
+    left.addEventListener('touchmove', e=>this.leftMove(e), {passive:true});
+    left.addEventListener('touchend', e=>this.leftEnd(e), {passive:true});
+    right.addEventListener('touchstart', e=>this.rightStart(e), {passive:true});
+    right.addEventListener('touchend', e=>this.rightEnd(e), {passive:true});
+
+    // デスクトップ確認用（マウス）
+    left.addEventListener('mousedown', e=>this.leftStart(this.wrapMouse(e)));
+    window.addEventListener('mousemove', e=>{ if(this.leftActive) this.leftMove(this.wrapMouse(e)); });
+    window.addEventListener('mouseup', e=>{ if(this.leftActive) this.leftEnd(this.wrapMouse(e)); });
+    right.addEventListener('mousedown', e=>this.rightStart(this.wrapMouse(e)));
+    right.addEventListener('mouseup', e=>this.rightEnd(this.wrapMouse(e)));
+  },
+  wrapMouse(e){ return { touches:[{clientX:e.clientX, clientY:e.clientY}], changedTouches:[{clientX:e.clientX, clientY:e.clientY}] }; },
+
+  leftStart(e){
+    const t = e.touches[0];
+    this.leftStartX = t.clientX; this.leftStartY = t.clientY; this.leftActive = true;
+  },
+  leftMove(e){
+    if (!this.leftActive) return;
+    const t = e.touches[0];
+    const dx = t.clientX - this.leftStartX;
+    if (Math.abs(dx) > 8){
+      const dir = dx > 0 ? 1 : -1;
+      Battle.player.moveDir = dir;
+      flashIndicator(dir>0?'ind-right':'ind-left');
+    } else {
+      Battle.player.moveDir = 0;
+    }
+  },
+  leftEnd(e){
+    const t = e.changedTouches[0];
+    const dx = t.clientX - this.leftStartX, dy = t.clientY - this.leftStartY;
+    const dt = 300; // 簡易判定
+    if (dy > 30 && Math.abs(dy) > Math.abs(dx)){
+      Battle.fallThrough(Battle.player);
+      flashIndicator('ind-down');
+    }
+    this.leftActive = false;
+    Battle.player.moveDir = 0;
+  },
+  rightStart(e){
+    const t = e.touches[0];
+    this.rightStartX = t.clientX; this.rightStartY = t.clientY; this.rightStartTime = performance.now();
+    this.rightActive = true;
+  },
+  rightEnd(e){
+    if (!this.rightActive) return;
+    this.rightActive = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - this.rightStartX, dy = t.clientY - this.rightStartY;
+    const dtms = performance.now() - this.rightStartTime;
+    const dist = Math.hypot(dx,dy);
+    const now = performance.now();
+    if (dtms < 350 && dist > 24){
+      if (Math.abs(dx) > Math.abs(dy)){
+        const dir = dx>0?1:-1;
+        Battle.trySpecial(Battle.player, Battle.enemy, dir, now);
+        flashIndicator('ind-spc');
+      } else if (dy < 0){
+        Battle.jump(Battle.player, now);
+        flashIndicator('ind-up');
+      }
+    } else {
+      Battle.tryNormalAttack(Battle.player, Battle.enemy, now);
+      flashIndicator('ind-atk');
+    }
+  }
+};
+Input.init();
+
+function flashIndicator(id){
+  const el = $(id); el.classList.add('on');
+  setTimeout(()=> el.classList.remove('on'), 300);
+}
+
+/* ---------------- 戦闘画面ボタン ---------------- */
+$('pause-btn').addEventListener('click', ()=>{
+  Battle.paused = true; $('overlay-pause').style.display='flex';
+});
+$('pause-resume-btn').addEventListener('click', ()=>{
+  Battle.paused = false; $('overlay-pause').style.display='none';
+  Battle.lastTime = performance.now();
+});
+$('pause-restart-btn').addEventListener('click', ()=>{
+  $('overlay-pause').style.display='none';
+  Battle.start(Battle.stageId);
+});
+$('pause-home-btn').addEventListener('click', ()=>{
+  $('overlay-pause').style.display='none';
+  Battle.stopLoops();
+  showScene('scene-home'); renderHome();
+});
+
+$('clear-next-btn').addEventListener('click', ()=>{
+  const nextId = Battle.stageId + 1;
+  if (GameData.getStage(nextId)) Battle.start(nextId);
+});
+$('clear-retry-btn').addEventListener('click', ()=> Battle.start(Battle.stageId));
+$('clear-home-btn').addEventListener('click', ()=>{ showScene('scene-home'); renderHome(); });
+
+$('over-retry-btn').addEventListener('click', ()=> Battle.start(Battle.stageId));
+$('over-home-btn').addEventListener('click', ()=>{ showScene('scene-home'); renderHome(); });
+
+</script>
+</body>
+</html>
