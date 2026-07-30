@@ -1,0 +1,19 @@
+[
+  {
+    "id": "human",
+    "name": "Human",
+    "emoji": "🤸",
+    "normalAttack": {
+      "reach": 1,
+      "angleDeg": 90,
+      "effect": "🔅",
+      "baseDamageAt60Atk": 6
+    },
+    "special": {
+      "damage": 15,
+      "reach": 3,
+      "stunSec": 0.6,
+      "effect": "🔆"
+    }
+  }
+]
