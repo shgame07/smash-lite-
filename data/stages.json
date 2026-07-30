@@ -1,0 +1,12 @@
+[
+  { "stageId": 1,  "enemyCharacter": "human", "totalStat": 100, "stats": { "hp": 30, "atk": 20, "spd": 10, "atkSpd": 10, "special": 30 }, "aiLevel": 1 },
+  { "stageId": 2,  "enemyCharacter": "human", "totalStat": 120, "stats": { "hp": 32, "atk": 24, "spd": 16, "atkSpd": 16, "special": 32 }, "aiLevel": 1 },
+  { "stageId": 3,  "enemyCharacter": "human", "totalStat": 140, "stats": { "hp": 34, "atk": 28, "spd": 22, "atkSpd": 22, "special": 34 }, "aiLevel": 1 },
+  { "stageId": 4,  "enemyCharacter": "human", "totalStat": 160, "stats": { "hp": 36, "atk": 32, "spd": 28, "atkSpd": 28, "special": 36 }, "aiLevel": 1 },
+  { "stageId": 5,  "enemyCharacter": "human", "totalStat": 180, "stats": { "hp": 38, "atk": 36, "spd": 34, "atkSpd": 34, "special": 38 }, "aiLevel": 1 },
+  { "stageId": 6,  "enemyCharacter": "human", "totalStat": 200, "stats": { "hp": 40, "atk": 40, "spd": 40, "atkSpd": 40, "special": 40 }, "aiLevel": 1 },
+  { "stageId": 7,  "enemyCharacter": "human", "totalStat": 230, "stats": { "hp": 44, "atk": 46, "spd": 46, "atkSpd": 46, "special": 48 }, "aiLevel": 1 },
+  { "stageId": 8,  "enemyCharacter": "human", "totalStat": 250, "stats": { "hp": 48, "atk": 50, "spd": 50, "atkSpd": 50, "special": 52 }, "aiLevel": 1 },
+  { "stageId": 9,  "enemyCharacter": "human", "totalStat": 275, "stats": { "hp": 53, "atk": 55, "spd": 55, "atkSpd": 55, "special": 57 }, "aiLevel": 1 },
+  { "stageId": 10, "enemyCharacter": "human", "totalStat": 300, "stats": { "hp": 60, "atk": 60, "spd": 60, "atkSpd": 60, "special": 60 }, "aiLevel": 1 }
+]
