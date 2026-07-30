@@ -417,8 +417,8 @@ const GameData = {
   stages: [],
   async load(){
     const [chars, stages] = await Promise.all([
-      fetch('./characters.json').then(r=>r.json()),
-      fetch('./stages.json').then(r=>r.json())
+      fetch('./data/characters.json').then(r=>r.json()),
+      fetch('./data/stages.json').then(r=>r.json())
     ]);
     chars.forEach(c=> this.characters[c.id] = c);
     this.stages = stages;
