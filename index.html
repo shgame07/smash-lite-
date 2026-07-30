@@ -141,14 +141,21 @@
   }
   .stage-banner span{ background:rgba(255,255,255,.9); padding:6px 24px; border-radius:12px; border:2px solid var(--color-accent); }
 
-  .input-indicator{
-    display:flex; justify-content:center; gap:10px; padding:10px;
+  .dpad{
+    position:absolute; bottom:10px; display:grid;
+    grid-template-columns:repeat(3, 34px); grid-template-rows:repeat(3, 34px);
+    grid-template-areas: ". up ." "left center right" ". down .";
+    gap:4px; z-index:6;
   }
-  .input-indicator .icon{
+  .dpad-left{ left:10px; }
+  .dpad-right{ right:10px; }
+  .dpad .icon{
     width:34px; height:34px; border-radius:50%; background:#ffe9ea; color:#b96a6c;
     display:flex; align-items:center; justify-content:center; font-size:16px; transition:background .1s, color .1s;
   }
-  .input-indicator .icon.on{ background:#7a4a2d; color:#fff; }
+  .dpad .icon.on{ background:#7a4a2d; color:#fff; }
+  .dpad .icon.blank{ visibility:hidden; }
+  #ind-up-dummy, #ind-down-dummy{ grid-area:unset; }
 
   .touch-zones{ position:absolute; inset:0; display:flex; z-index:4; }
   .touch-zones .zone{ flex:1; }
@@ -185,17 +192,26 @@
         <label>プレイヤー名（2〜12文字）</label>
         <input id="ac-name" maxlength="12" placeholder="たろう">
       </div>
-      <div class="field">
-        <label>ログインID（半角英数字・_ - / 6〜20文字）</label>
-        <input id="ac-id" maxlength="20" placeholder="taro_0001">
-      </div>
-      <div class="field">
-        <label>パスワード（英数字 / 6〜20文字）</label>
-        <input id="ac-pw" type="password" maxlength="20" placeholder="password">
-      </div>
       <div class="error-msg" id="ac-error"></div>
       <button class="btn" id="ac-submit">アカウントを作成</button>
       <button class="btn secondary" id="ac-goto-login">すでにアカウントをお持ちの方はこちら</button>
+    </div>
+  </div>
+
+  <!-- アカウント作成完了（自動生成されたID/PWの確認） -->
+  <div class="scene" id="scene-account-created">
+    <div class="topbar"><div></div><h1 class="title">アカウント作成完了</h1><div></div></div>
+    <div class="content">
+      <p style="font-size:13px; color:#666;">別の端末でも同じアカウントを使う場合に必要です。忘れないよう控えておいてください。</p>
+      <div class="build-card">
+        <div class="cap">ログインID</div>
+        <div class="char" id="created-login-id" style="font-size:18px; word-break:break-all;">-</div>
+      </div>
+      <div class="build-card">
+        <div class="cap">パスワード</div>
+        <div class="char" id="created-password" style="font-size:18px; word-break:break-all;">-</div>
+      </div>
+      <button class="btn" id="created-confirm-btn">確認しました</button>
     </div>
   </div>
 
@@ -325,14 +341,22 @@
         <div class="zone" id="zone-left"></div>
         <div class="zone" id="zone-right"></div>
       </div>
-    </div>
-    <div class="input-indicator">
-      <div class="icon" id="ind-left">◀</div>
-      <div class="icon" id="ind-down">▼</div>
-      <div class="icon" id="ind-up">▲</div>
-      <div class="icon" id="ind-right">▶</div>
-      <div class="icon" id="ind-atk">🔅</div>
-      <div class="icon" id="ind-spc">🔆</div>
+      <!-- 左手入力の可視化（移動系）：中央/左/右/下のみ使用 -->
+      <div class="dpad dpad-left">
+        <div class="icon blank" style="grid-area:up;"></div>
+        <div class="icon" id="ind-left" style="grid-area:left;">◀</div>
+        <div class="icon blank" style="grid-area:center;"></div>
+        <div class="icon" id="ind-right" style="grid-area:right;">▶</div>
+        <div class="icon" id="ind-down" style="grid-area:down;">▼</div>
+      </div>
+      <!-- 右手入力の可視化（アクション系）：上/左/中央/右のみ使用 -->
+      <div class="dpad dpad-right">
+        <div class="icon" id="ind-up" style="grid-area:up;">▲</div>
+        <div class="icon" id="ind-spc-left" style="grid-area:left;">🔆</div>
+        <div class="icon" id="ind-atk" style="grid-area:center;">🔅</div>
+        <div class="icon" id="ind-spc-right" style="grid-area:right;">🔆</div>
+        <div class="icon blank" style="grid-area:down;"></div>
+      </div>
     </div>
 
     <div class="overlay" id="overlay-pause" style="display:none;">
@@ -490,28 +514,42 @@ function applyLoginResult(res){
 }
 
 /* ---------------- アカウント作成 ---------------- */
+function randomString(length, chars){
+  let out = '';
+  const arr = new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  for (let i=0;i<length;i++) out += chars[arr[i] % chars.length];
+  return out;
+}
+function generateLoginId(){
+  return 'p' + randomString(11, 'abcdefghijklmnopqrstuvwxyz0123456789'); // 12文字・規定の6〜20文字に適合
+}
+function generatePassword(){
+  return randomString(12, 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'); // 紛らわしい文字を除いた英数字12文字
+}
+
 $('ac-submit').addEventListener('click', async ()=>{
   const name = $('ac-name').value.trim();
-  const id = $('ac-id').value.trim();
-  const pw = $('ac-pw').value;
   const err = $('ac-error');
   err.textContent = '';
   if (!name){ err.textContent = 'プレイヤー名を入力してください'; return; }
   if (name.length < 2 || name.length > 12){ err.textContent = 'プレイヤー名は2〜12文字です'; return; }
-  if (!id){ err.textContent = 'ログインIDを入力してください'; return; }
-  if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)){ err.textContent = 'ログインIDは半角英数字・_・-で6〜20文字です'; return; }
-  if (!pw){ err.textContent = 'パスワードを入力してください'; return; }
-  if (!/^[A-Za-z0-9]{6,20}$/.test(pw)){ err.textContent = 'パスワードは英数字で6〜20文字です'; return; }
 
+  const id = generateLoginId();
+  const pw = generatePassword();
   const deviceToken = uuid();
   try{
     const res = await API.call('register', { loginId:id, password:pw, playerName:name, deviceToken });
     if (!res.ok){ err.textContent = res.error || '作成に失敗しました'; return; }
     localStorage.setItem('smash_device_token', deviceToken);
     applyLoginResult(res);
-    showScene('scene-home'); renderHome();
+    // 自動生成したIDとパスワードを一度だけ表示（他端末ログイン用に控えてもらう）
+    $('created-login-id').textContent = id;
+    $('created-password').textContent = pw;
+    showScene('scene-account-created');
   }catch(e){ err.textContent = '通信に失敗しました。API_URLの設定をご確認ください'; }
 });
+$('created-confirm-btn').addEventListener('click', ()=>{ showScene('scene-home'); renderHome(); });
 $('ac-goto-login').addEventListener('click', ()=> showScene('scene-login'));
 
 $('lg-submit').addEventListener('click', async ()=>{
@@ -686,12 +724,18 @@ $('settings-reset-btn').addEventListener('click', async ()=>{
 /* =========================================================
    バトルシステム
    ========================================================= */
-const SQUARE = 48;              // 1マス=48px
-const FIELD_COLS = 12;
-const FIELD_ROWS = 6;
-const GROUND_ROW = 5;           // 地面（通常床）
-const PLATFORM_ROW = 3;         // すり抜け床の高さ
-const PLATFORM_SEGMENTS = [ [1,3], [5,7], [9,11] ]; // 3つのすり抜け足場
+let SQUARE = 40;                // 1マス=Npx（端末サイズに応じてbuildField内で再計算）
+let FIELD_OFFSET_X = 0, FIELD_OFFSET_Y = 0; // フィールドを中央寄せするためのオフセット
+const FIELD_COLS = 16;
+const FIELD_ROWS = 8;
+const GROUND_ROW = 6;            // 地面（通常床）の高さ
+const GROUND_X1 = 2, GROUND_X2 = 14; // 地面は画面中央寄りに幅広く配置（左右は見えない壁の余白）
+// すり抜け足場（3つ）：上段中央に1つ、中段に左右2つ（中央は空けて上段の足場の下に来るよう配置）
+const PLATFORMS = [
+  { row: 2, x1: 6,  x2: 11 },
+  { row: 4, x1: 3,  x2: 6.5 },
+  { row: 4, x1: 10.5, x2: 14 }
+];
 const FIGHTER_RADIUS = 0.625;   // 直径1.25マス
 const GRAVITY = 34;             // マス/秒^2
 const JUMP_VY = -10;            // マス/秒
@@ -724,8 +768,8 @@ const Battle = {
     const playerBuild = getCurrentBuild();
     const charDef = GameData.characters['human'];
 
-    this.player = this.makeFighter(playerBuild, charDef, 1.5, true);
-    this.enemy = this.makeFighter(stage.stats, GameData.characters[stage.enemyCharacter], FIELD_COLS-1.5, false);
+    this.player = this.makeFighter(playerBuild, charDef, GROUND_X1+1, true);
+    this.enemy = this.makeFighter(stage.stats, GameData.characters[stage.enemyCharacter], GROUND_X2-1, false);
 
     this.active = true; this.paused = false; this.hitStopUntil = 0; this.aiTimerAcc = 0;
     $('hud-player-name').textContent = State.playerName || 'プレイヤー';
@@ -756,14 +800,20 @@ const Battle = {
 
   buildField(){
     const view = $('field-view');
+    // 端末サイズに合わせてマス目のpxサイズを再計算し、中央へ寄せる（端末非依存レイアウト）
+    SQUARE = Math.floor(Math.min(view.clientWidth / FIELD_COLS, view.clientHeight / FIELD_ROWS));
+    FIELD_OFFSET_X = Math.floor((view.clientWidth - FIELD_COLS*SQUARE) / 2);
+    FIELD_OFFSET_Y = Math.floor((view.clientHeight - FIELD_ROWS*SQUARE) / 2);
+
     view.querySelectorAll('.ground,.platform,.fighter,.fx,.dmg-popup').forEach(e=>e.remove());
     const ground = document.createElement('div'); ground.className='ground';
-    ground.style.top = (GROUND_ROW*SQUARE) + 'px'; ground.style.height = (FIELD_ROWS-GROUND_ROW)*SQUARE + 'px';
+    ground.style.left = (FIELD_OFFSET_X + GROUND_X1*SQUARE)+'px'; ground.style.width = (GROUND_X2-GROUND_X1)*SQUARE+'px';
+    ground.style.top = (FIELD_OFFSET_Y + GROUND_ROW*SQUARE) + 'px'; ground.style.height = (FIELD_ROWS-GROUND_ROW)*SQUARE + 'px';
     view.appendChild(ground);
-    PLATFORM_SEGMENTS.forEach(seg=>{
+    PLATFORMS.forEach(seg=>{
       const p = document.createElement('div'); p.className='platform';
-      p.style.left = seg[0]*SQUARE+'px'; p.style.width=(seg[1]-seg[0])*SQUARE+'px';
-      p.style.top = (PLATFORM_ROW*SQUARE)+'px'; p.style.height='10px';
+      p.style.left = (FIELD_OFFSET_X + seg.x1*SQUARE)+'px'; p.style.width=(seg.x2-seg.x1)*SQUARE+'px';
+      p.style.top = (FIELD_OFFSET_Y + seg.row*SQUARE)+'px'; p.style.height='10px';
       view.appendChild(p);
     });
     const pEl = document.createElement('div'); pEl.className='fighter'; pEl.textContent = this.player.charDef.emoji;
@@ -781,8 +831,8 @@ const Battle = {
   },
 
   renderFighterPos(f){
-    f.el.style.left = (f.x*SQUARE)+'px';
-    f.el.style.top = (f.y*SQUARE)+'px';
+    f.el.style.left = (FIELD_OFFSET_X + f.x*SQUARE)+'px';
+    f.el.style.top = (FIELD_OFFSET_Y + f.y*SQUARE)+'px';
     f.el.style.transform = `translate(-50%,-100%) scaleX(${f.facing})`;
     f.el.classList.toggle('iframe', performance.now() < f.iframeUntil);
   },
@@ -829,11 +879,11 @@ const Battle = {
 
   updatePhysics(f, dt, now){
     const stunned = now < f.specialStunUntil;
-    // 移動
+    // 移動（左右は見えない壁＝地面の左端/右端で制限）
     const dir = stunned ? 0 : f.moveDir;
     if (dir !== 0) f.facing = dir;
     f.x += dir * this.speedOf(f) * dt;
-    f.x = Math.max(FIGHTER_RADIUS, Math.min(FIELD_COLS - FIGHTER_RADIUS, f.x));
+    f.x = Math.max(GROUND_X1 + FIGHTER_RADIUS, Math.min(GROUND_X2 - FIGHTER_RADIUS, f.x));
 
     // 重力
     f.vy += GRAVITY * dt;
@@ -844,10 +894,14 @@ const Battle = {
     if (f.y >= GROUND_ROW){ f.y = GROUND_ROW; f.vy = 0; f.grounded = true; f.onPlatform=false; }
     else{
       f.grounded = false;
-      // すり抜け足場判定（落下中・下フリック中でない場合のみ着地）
-      if (!f._fallThrough && f.vy > 0 && prevY <= PLATFORM_ROW && f.y >= PLATFORM_ROW){
-        const onSeg = PLATFORM_SEGMENTS.some(seg=> f.x >= seg[0] && f.x <= seg[1]);
-        if (onSeg){ f.y = PLATFORM_ROW; f.vy = 0; f.grounded = true; f.onPlatform = true; }
+      // すり抜け足場判定（落下中・下フリック中でない場合のみ着地。3つの足場すべてを判定）
+      if (!f._fallThrough && f.vy > 0){
+        for (const seg of PLATFORMS){
+          if (prevY <= seg.row && f.y >= seg.row && f.x >= seg.x1 && f.x <= seg.x2){
+            f.y = seg.row; f.vy = 0; f.grounded = true; f.onPlatform = true;
+            break;
+          }
+        }
       }
     }
     if (f.grounded) f._fallThrough = false;
@@ -915,13 +969,13 @@ const Battle = {
 
   spawnFx(f, emoji){
     const el = document.createElement('div'); el.className='fx'; el.textContent = emoji;
-    el.style.left = (f.x*SQUARE)+'px'; el.style.top = ((f.y-0.6)*SQUARE)+'px';
+    el.style.left = (FIELD_OFFSET_X + f.x*SQUARE)+'px'; el.style.top = (FIELD_OFFSET_Y + (f.y-0.6)*SQUARE)+'px';
     $('field-view').appendChild(el);
     setTimeout(()=>el.remove(), 260);
   },
   spawnDamagePopup(f, dmg, isSpecial){
     const el = document.createElement('div'); el.className='dmg-popup' + (isSpecial?' special':'');
-    el.textContent = dmg; el.style.left=(f.x*SQUARE)+'px'; el.style.top=((f.y-1.6)*SQUARE)+'px';
+    el.textContent = dmg; el.style.left=(FIELD_OFFSET_X + f.x*SQUARE)+'px'; el.style.top=(FIELD_OFFSET_Y + (f.y-1.6)*SQUARE)+'px';
     $('field-view').appendChild(el);
     setTimeout(()=>el.remove(), 520);
   },
@@ -1065,7 +1119,7 @@ const Input = {
       if (Math.abs(dx) > Math.abs(dy)){
         const dir = dx>0?1:-1;
         Battle.trySpecial(Battle.player, Battle.enemy, dir, now);
-        flashIndicator('ind-spc');
+        flashIndicator(dir>0?'ind-spc-right':'ind-spc-left');
       } else if (dy < 0){
         Battle.jump(Battle.player, now);
         flashIndicator('ind-up');
